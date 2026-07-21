@@ -7,36 +7,56 @@ app.get("/", (req, res) => {
     res.send("Roblox API Online");
 });
 
+
 app.get("/roblox", async (req, res) => {
+
     try {
 
         const username = req.query.username;
 
-        if (!username)
-            return res.status(400).json({
-                success: false,
-                error: "Missing username"
+        if (!username) {
+            return res.json({
+                success:false,
+                error:"Missing username"
             });
+        }
 
-        // Search User
+
+        // Tìm user
 
         const search = await axios.get(
-            `https://users.roblox.com/v1/users/search?keyword=${encodeURIComponent(username)}&limit=10`
+            "https://users.roblox.com/v1/users/search",
+            {
+                params:{
+                    keyword:username,
+                    limit:10
+                }
+            }
         );
 
-        if (!search.data.data.length)
+
+        if (!search.data.data.length) {
+
             return res.json({
-                success: false,
-                error: "User not found"
+                success:false,
+                error:"User not found"
             });
+
+        }
+
 
         const id = search.data.data[0].id;
 
-        // User
+
+        // Thông tin user
 
         const user = (
-            await axios.get(`https://users.roblox.com/v1/users/${id}`)
+            await axios.get(
+                `https://users.roblox.com/v1/users/${id}`
+            )
         ).data;
+
+
 
         // Followers
 
@@ -46,6 +66,8 @@ app.get("/roblox", async (req, res) => {
             )
         ).data.count;
 
+
+
         // Friends
 
         const friends = (
@@ -53,6 +75,8 @@ app.get("/roblox", async (req, res) => {
                 `https://friends.roblox.com/v1/users/${id}/friends/count`
             )
         ).data.count;
+
+
 
         // Following
 
@@ -62,6 +86,8 @@ app.get("/roblox", async (req, res) => {
             )
         ).data.count;
 
+
+
         // Avatar
 
         const avatar = (
@@ -70,42 +96,165 @@ app.get("/roblox", async (req, res) => {
             )
         ).data.data[0].imageUrl;
 
+
+
+        // Username cũ
+
+        let oldNames = [];
+
+        try {
+
+            const history = await axios.get(
+                `https://users.roblox.com/v1/users/${id}/username-history`
+            );
+
+            oldNames = history.data.data.map(
+                x => x.name
+            );
+
+        } catch(e){}
+
+
+
+        // Groups
+
+        let groups = 0;
+
+        try {
+
+            const groupData = await axios.get(
+                `https://groups.roblox.com/v2/users/${id}/groups/roles`
+            );
+
+            groups = groupData.data.data.length;
+
+        } catch(e){}
+
+
+
+        // Badges
+
+        let badges = 0;
+
+        try {
+
+            const badgeData = await axios.get(
+                `https://badges.roblox.com/v1/users/${id}/badges`,
+                {
+                    params:{
+                        limit:10
+                    }
+                }
+            );
+
+            badges = badgeData.data.data.length;
+
+        } catch(e){}
+
+
+
+
+        // Tuổi tài khoản
+
+        const createdDate = new Date(user.created);
+
+        const now = new Date();
+
+        let age = now.getFullYear() - createdDate.getFullYear();
+
+
+        if (
+            now.getMonth() < createdDate.getMonth()
+            ||
+            (
+                now.getMonth() === createdDate.getMonth()
+                &&
+                now.getDate() < createdDate.getDate()
+            )
+        ){
+            age--;
+        }
+
+
+
+
         res.json({
-            success: true,
 
-            id,
+            success:true,
 
-            username: user.name,
+            id:id,
 
-            displayName: user.displayName,
+            username:user.name,
+
+            displayName:user.displayName,
+
 
             description:
-                user.description || "Người dùng chưa thêm mô tả.",
+            user.description || 
+            "Người dùng chưa thêm mô tả.",
 
-            verified: user.hasVerifiedBadge,
 
-            created: user.created,
+            verified:user.hasVerifiedBadge,
 
-            followers,
 
-            friends,
+            created:user.created,
 
-            following,
 
-            avatar,
+            accountAge:
+            age + " năm",
 
-            profile: `https://www.roblox.com/users/${id}/profile`
+
+            followers:followers,
+
+            friends:friends,
+
+            following:following,
+
+
+            avatar:avatar,
+
+
+            oldNames:oldNames,
+
+
+            groups:groups,
+
+
+            badges:badges,
+
+
+            profile:
+            `https://www.roblox.com/users/${id}/profile`
+
         });
-    } catch (err) {
+
+
+
+    } catch(err){
+
+
         res.status(500).json({
-            success: false,
-            error: err.message
+
+            success:false,
+
+            error:err.message
+
         });
+
+
     }
+
 });
+
+
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () =>
-    console.log("Server running on " + PORT)
-); 
+
+app.listen(PORT,()=>{
+
+    console.log(
+        "Roblox API running on " + PORT
+    );
+
+});
