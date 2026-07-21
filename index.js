@@ -22,15 +22,15 @@ app.get("/roblox", async (req, res) => {
         }
 
 
-        // Tìm user
+        // Tìm user chính xác
 
-        const search = await axios.get(
-            "https://users.roblox.com/v1/users/search",
+        const search = await axios.post(
+            "https://users.roblox.com/v1/usernames/users",
             {
-                params:{
-                    keyword:username,
-                    limit:10
-                }
+                usernames:[
+                    username
+                ],
+                excludeBannedUsers:true
             }
         );
 
@@ -46,6 +46,7 @@ app.get("/roblox", async (req, res) => {
 
 
         const id = search.data.data[0].id;
+
 
 
         // Thông tin user
@@ -177,20 +178,21 @@ app.get("/roblox", async (req, res) => {
 
 
 
-
         res.json({
 
             success:true,
 
             id:id,
 
+
             username:user.name,
+
 
             displayName:user.displayName,
 
 
             description:
-            user.description || 
+            user.description ||
             "Người dùng chưa thêm mô tả.",
 
 
@@ -206,7 +208,9 @@ app.get("/roblox", async (req, res) => {
 
             followers:followers,
 
+
             friends:friends,
+
 
             following:following,
 
@@ -245,7 +249,6 @@ app.get("/roblox", async (req, res) => {
     }
 
 });
-
 
 
 const PORT = process.env.PORT || 3000;
