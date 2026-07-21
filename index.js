@@ -154,27 +154,78 @@ app.get("/roblox", async (req, res) => {
 
 
 
-
         // Tuổi tài khoản
 
         const createdDate = new Date(user.created);
 
         const now = new Date();
 
-        let age = now.getFullYear() - createdDate.getFullYear();
+
+        let years = now.getFullYear() - createdDate.getFullYear();
+
+        let months = now.getMonth() - createdDate.getMonth();
+
+        let days = now.getDate() - createdDate.getDate();
 
 
-        if (
-            now.getMonth() < createdDate.getMonth()
-            ||
-            (
-                now.getMonth() === createdDate.getMonth()
-                &&
-                now.getDate() < createdDate.getDate()
-            )
-        ){
-            age--;
+
+        if (days < 0) {
+
+            months--;
+
+            const lastMonth = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                0
+            );
+
+            days += lastMonth.getDate();
+
         }
+
+
+
+        if (months < 0) {
+
+            years--;
+
+            months += 12;
+
+        }
+
+
+
+        let age = [];
+
+
+        if (years > 0) {
+
+            age.push(
+                years + " năm"
+            );
+
+        }
+
+
+        if (months > 0) {
+
+            age.push(
+                months + " tháng"
+            );
+
+        }
+
+
+        if (days > 0) {
+
+            age.push(
+                days + " ngày"
+            );
+
+        }
+
+
+        age = age.join(" ");
 
 
 
@@ -184,9 +235,7 @@ app.get("/roblox", async (req, res) => {
 
             id:id,
 
-
             username:user.name,
-
 
             displayName:user.displayName,
 
@@ -202,15 +251,12 @@ app.get("/roblox", async (req, res) => {
             created:user.created,
 
 
-            accountAge:
-            age + " năm",
+            accountAge:age,
 
 
             followers:followers,
 
-
             friends:friends,
-
 
             following:following,
 
@@ -249,6 +295,7 @@ app.get("/roblox", async (req, res) => {
     }
 
 });
+
 
 
 const PORT = process.env.PORT || 3000;
