@@ -1,13 +1,20 @@
 {
   "name": "roblox-user-api",
-  "version": "1.0.0",
-  "description": "Roblox User API",
+  "version": "2.0.0",
+  "description": "Advanced Roblox User API with avatar, badges, groups, presence and statistics",
   "main": "index.js",
+
   "scripts": {
     "start": "node index.js"
   },
+
+  "engines": {
+    "node": ">=18"
+  },
+
   "dependencies": {
-    "axios": "^1.8.2",
-    "express": "^4.21.2"
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "express": "^4.21.1"
   }
-} 
+}
