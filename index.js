@@ -259,24 +259,16 @@ presence.data.userPresences[0]?.lastLocation || "Offline"
 
 
 groups:
-
-groups.data.data.map(g=>({
-
-name:g.group.name,
-
-rank:g.role.name
-
-})),
-
-
+groups.data.data
+.map(g=>`${g.group.name} (${g.role.name})`)
+.join("\n"),
 
 
 badges:
-
 badges.data.data
-.slice(0,50)
-.map(b=>b.name),
-
+.slice(0,20)
+.map(b=>`🏅 ${b.name}`)
+.join("\n")
 
 
 
