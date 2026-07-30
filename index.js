@@ -11,58 +11,57 @@ app.use(express.json());
 const cache = new Map();
 
 
-const api = axios.create({
+const http = axios.create({
     timeout: 10000,
     headers: {
-        "User-Agent": "Mozilla/5.0 Roblox-API"
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
     }
 });
 
 
-// GET request có chống 429
+
+// GET Roblox API + chống 429
 async function robloxGet(url) {
 
-    let retry = 0;
-
-    while (retry < 3) {
+    for (let i = 0; i < 3; i++) {
 
         try {
 
-            return await api.get(url);
+            return await http.get(url);
 
         } catch (err) {
 
-            if (err.response?.status === 429) {
 
-                retry++;
+            if (err.response?.status === 429) {
 
                 await new Promise(
                     r => setTimeout(r, 3000)
                 );
 
-            } else {
-
-                throw err;
+                continue;
 
             }
+
+
+            throw err;
 
         }
 
     }
 
-    throw new Error("Roblox rate limited");
+
+    throw new Error("Roblox rate limit");
 
 }
 
 
 
-// POST request có header
+
+// POST Roblox API
 async function robloxPost(url, body) {
 
-    let retry = 0;
-
-
-    while (retry < 3) {
+    for (let i = 0; i < 3; i++) {
 
         try {
 
@@ -72,8 +71,9 @@ async function robloxPost(url, body) {
                 {
                     timeout:10000,
                     headers:{
+                        "User-Agent":"Mozilla/5.0",
                         "Content-Type":"application/json",
-                        "User-Agent":"Mozilla/5.0 Roblox-API"
+                        "Accept":"application/json"
                     }
                 }
             );
@@ -84,36 +84,35 @@ async function robloxPost(url, body) {
 
             if(err.response?.status === 429){
 
-                retry++;
-
                 await new Promise(
                     r=>setTimeout(r,3000)
                 );
 
-
-            } else {
-
-                throw err;
+                continue;
 
             }
+
+
+            throw err;
 
         }
 
     }
 
 
-    throw new Error("Roblox rate limited");
+    throw new Error("Roblox rate limit");
 
 }
 
 
 
 
+// lấy ID Roblox
 
 async function getUserId(username){
 
 
-    const result = await robloxPost(
+    const res = await robloxPost(
 
         "https://users.roblox.com/v1/usernames/users",
 
@@ -130,8 +129,8 @@ async function getUserId(username){
 
 
     if(
-        !result.data.data ||
-        result.data.data.length === 0
+        !res.data.data ||
+        res.data.data.length === 0
     ){
 
         throw new Error(
@@ -141,22 +140,21 @@ async function getUserId(username){
     }
 
 
-    return result.data.data[0].id;
+    return res.data.data[0].id;
 
 }
 
 
 
 
-function accountAge(date){
+
+function getAge(date){
 
 
     const days = Math.floor(
 
         (Date.now() - new Date(date))
-
         /
-
         (1000*60*60*24)
 
     );
@@ -164,7 +162,7 @@ function accountAge(date){
 
     return {
 
-        days:days,
+        days,
 
         years:
         `${Math.floor(days/365)} years`
@@ -179,17 +177,15 @@ function accountAge(date){
 
 app.get("/",(req,res)=>{
 
-
     res.json({
 
         success:true,
 
-        api:"Roblox User API",
+        api:"Roblox API",
 
-        version:"3.1"
+        version:"4.0"
 
     });
-
 
 });
 
@@ -198,261 +194,378 @@ app.get("/",(req,res)=>{
 
 
 
-app.get("/roblox",async(req,res)=>{
+app.get("/roblox", async(req,res)=>{
 
 
-try{
+    try {
 
 
-    const start = Date.now();
+        const start = Date.now();
 
 
-    const username = req.query.username;
+        const username = req.query.username;
 
 
 
-    if(!username){
+        if(!username){
 
-        return res.json({
+            return res.json({
 
-            success:false,
+                success:false,
 
-            error:"Missing username"
+                error:"Missing username"
 
-        });
+            });
 
-    }
-
-
-
-
-    const key =
-    username.toLowerCase();
-
-
-
-
-    if(cache.has(key)){
-
-        return res.json(
-            cache.get(key)
-        );
-
-    }
-
-
-
-
-    const id =
-    await getUserId(username);
-
-
-
-
-
-    const [
-
-        user,
-
-        avatar,
-
-        friends,
-
-        groups,
-
-        badges
-
-    ] = await Promise.all([
-
-
-
-        robloxGet(
-        `https://users.roblox.com/v1/users/${id}`
-        ),
-
-
-
-        robloxGet(
-        `https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=720x720&format=Png`
-        ),
-
-
-
-        robloxGet(
-        `https://friends.roblox.com/v1/users/${id}/friends/count`
-        ),
-
-
-
-        robloxGet(
-        `https://groups.roblox.com/v2/users/${id}/groups/roles`
-        ),
-
-
-
-        robloxGet(
-        `https://badges.roblox.com/v1/users/${id}/badges?limit=20&sortOrder=Desc`
-        )
-
-
-
-    ]);
-
-
-
-
-
-
-    let followers = 0;
-    let following = 0;
-    let presence = {
-        online:false,
-        place:"Offline"
-    };
-
-
-
-    // Lấy followers
-    try{
-
-        const f =
-        await robloxGet(
-        `https://friends.roblox.com/v1/users/${id}/followers/count`
-        );
-
-        followers =
-        f.data.count;
-
-
-    }catch(e){}
-
-
-
-
-
-    // Lấy following
-    try{
-
-        const f =
-        await robloxGet(
-        `https://friends.roblox.com/v1/users/${id}/followings/count`
-        );
-
-        following =
-        f.data.count;
-
-
-    }catch(e){}
-
-
-
-
-
-
-
-    // Presence không bắt buộc
-
-    try{
-
-
-        const p =
-        await robloxPost(
-
-        "https://presence.roblox.com/v1/presence/users",
-
-        {
-            userIds:[id]
         }
 
-        );
+
+
+
+
+        const key =
+        username.toLowerCase();
+
+
+
+        if(cache.has(key)){
+
+            return res.json(
+                cache.get(key)
+            );
+
+        }
+
+
+
+
+        const id =
+        await getUserId(username);
+
+
+
+
+
+        const [
+            user,
+            avatar,
+            friends,
+            groups,
+            badges
+        ] = await Promise.all([
+
+
+            robloxGet(
+            `https://users.roblox.com/v1/users/${id}`
+            ),
+
+
+            robloxGet(
+            `https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=720x720&format=Png`
+            ),
+
+
+            robloxGet(
+            `https://friends.roblox.com/v1/users/${id}/friends/count`
+            ),
+
+
+            robloxGet(
+            `https://groups.roblox.com/v2/users/${id}/groups/roles`
+            ),
+
+
+            robloxGet(
+            `https://badges.roblox.com/v1/users/${id}/badges?limit=20&sortOrder=Desc`
+            )
+
+
+        ]);
+
+
+
+
+
+
+
+        let followers = 0;
+
+        let following = 0;
+
+
+        let presence = {
+
+            online:false,
+
+            place:"Offline"
+
+        };
+
+
+
+
+        // followers
+
+        try {
+
+            const data =
+            await robloxGet(
+            `https://friends.roblox.com/v1/users/${id}/followers/count`
+            );
+
+
+            followers =
+            data.data.count;
+
+
+        }catch(e){}
+
+
+
+
+
+        // following
+
+        try {
+
+
+            const data =
+            await robloxGet(
+            `https://friends.roblox.com/v1/users/${id}/followings/count`
+            );
+
+
+            following =
+            data.data.count;
+
+
+        }catch(e){}
+
+
+
+
+
+
+
+        // presence không bắt buộc
+
+        try {
+
+
+            const p =
+            await robloxPost(
+
+            "https://presence.roblox.com/v1/presence/users",
+
+            {
+                userIds:[
+                    id
+                ]
+            }
+
+            );
+
+
+
+            const info =
+            p.data.userPresences[0];
+
+
+
+            if(info){
+
+                presence={
+
+                    online:
+                    info.userPresenceType !== 0,
+
+
+                    place:
+                    info.lastLocation || "Offline"
+
+                };
+
+            }
+
+
+        }catch(e){
+
+            console.log(
+            "Presence error:",
+            e.message
+            );
+
+        }
+
+
+
+
+
 
 
 
         const data =
-        p.data.userPresences[0];
-
-
-
-        if(data){
-
-            presence={
-
-                online:
-                data.userPresenceType !== 0,
-
-
-                place:
-                data.lastLocation || "Offline"
-
-            };
-
-        }
-
-
-    }catch(e){}
+        user.data;
 
 
 
 
+        const result = {
+
+
+            success:true,
+
+
+            user:{
+
+
+
+                id:id,
+
+
+                username:
+                data.name,
+
+
+                displayName:
+                data.displayName,
+
+
+                description:
+                data.description ||
+                "Không có mô tả",
+
+
+
+                verified:
+                data.hasVerifiedBadge,
 
 
 
 
-    const data =
-    user.data;
+
+                created:{
+
+
+                    raw:
+                    data.created,
+
+
+                    age:
+                    getAge(data.created)
+
+
+                },
 
 
 
 
 
 
-    const result = {
+                avatar:{
+
+
+                    full:
+                    avatar.data.data[0]?.imageUrl || "",
 
 
 
-        success:true,
+                    headshot:
+                    `https://www.roblox.com/headshot-thumbnail/image?userId=${id}&width=420&height=420&format=png`
 
-
-
-        user:{
-
-
-
-            id:id,
-
-
-
-            username:
-            data.name,
-
-
-
-            displayName:
-            data.displayName,
-
-
-
-            description:
-            data.description ||
-            "Không có mô tả",
-
-
-
-            verified:
-            data.hasVerifiedBadge,
+                },
 
 
 
 
-            created:{
 
 
-                raw:
-                data.created,
 
 
-                age:
-                accountAge(data.created)
+                statistics:{
+
+
+                    followers,
+
+
+                    friends:
+                    friends.data.count,
+
+
+                    following
+
+
+                },
+
+
+
+
+
+
+
+                groups:
+
+
+                groups.data.data.length
+
+                ?
+
+
+                groups.data.data
+                .map(
+                    g =>
+                    `${g.group.name} (${g.role.name})`
+                )
+                .join("\n")
+
+
+                :
+
+                "Không có group",
+
+
+
+
+
+
+
+                badges:
+
+
+                badges.data.data.length
+
+                ?
+
+
+                badges.data.data
+                .map(
+                    b =>
+                    `🏅 ${b.name}`
+                )
+                .join("\n")
+
+
+                :
+
+                "Không có badge",
+
+
+
+
+
+
+                presence,
+
+
+
+
+
+
+
+                profile:
+                `https://www.roblox.com/users/${id}/profile`
+
+
 
             },
 
@@ -460,176 +573,74 @@ try{
 
 
 
-            avatar:{
+            api:{
 
 
-                full:
-                avatar.data.data[0]?.imageUrl || "",
+                version:"4.0",
 
 
-                headshot:
-                `https://www.roblox.com/headshot-thumbnail/image?userId=${id}&width=420&height=420&format=png`
+                responseTime:
+                `${Date.now()-start}ms`
 
 
-            },
+            }
 
 
 
+        };
 
 
 
-            statistics:{
 
 
-                followers,
 
+        cache.set(
+            key,
+            result
+        );
 
-                friends:
-                friends.data.count,
 
 
-                following
+        setTimeout(()=>{
 
+            cache.delete(key);
 
-            },
+        },1800000);
 
 
 
 
 
 
+        res.json(result);
 
-            groups:
 
 
-            groups.data.data.length
 
-            ?
+    } catch(err){
 
-            groups.data.data
-            .map(
-                g =>
-                `${g.group.name} (${g.role.name})`
-            )
-            .join("\n")
 
 
-            :
+        console.log(
+            "ERROR:",
+            err.response?.status,
+            err.config?.url,
+            err.message
+        );
 
-            "Không có group",
 
 
+        res.json({
 
+            success:false,
 
+            error:
+            err.message
 
+        });
 
-            badges:
 
-
-            badges.data.data.length
-
-            ?
-
-            badges.data.data
-            .map(
-                b =>
-                `🏅 ${b.name}`
-            )
-            .join("\n")
-
-
-            :
-
-            "Không có badge",
-
-
-
-
-
-            presence,
-
-
-
-
-
-            profile:
-            `https://www.roblox.com/users/${id}/profile`
-
-
-
-
-        },
-
-
-
-
-
-        api:{
-
-
-            version:"3.1",
-
-
-            responseTime:
-            `${Date.now()-start}ms`
-
-
-        }
-
-
-
-
-    };
-
-
-
-
-
-
-    cache.set(
-        key,
-        result
-    );
-
-
-
-    setTimeout(()=>{
-
-        cache.delete(key);
-
-    },1800000);
-
-
-
-
-
-    res.json(result);
-
-
-
-
-}catch(err){
-
-
-
-    console.log(
-        err.response?.data || err.message
-    );
-
-
-
-    res.json({
-
-        success:false,
-
-        error:
-        err.message
-
-    });
-
-
-}
-
+    }
 
 
 });
@@ -651,4 +662,4 @@ app.listen(PORT,()=>{
         `Roblox API running on ${PORT}`
     );
 
-}); 
+});
