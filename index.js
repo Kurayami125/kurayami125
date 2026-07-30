@@ -1,12 +1,16 @@
-
 const express = require("express");
 const axios = require("axios");
+const cors = require("cors");
 
 const app = express();
+
+app.use(cors());
+
 
 app.get("/", (req, res) => {
     res.send("Roblox API Online");
 });
+
 
 
 app.get("/roblox", async (req, res) => {
@@ -15,15 +19,19 @@ app.get("/roblox", async (req, res) => {
 
         const username = req.query.username;
 
+
         if (!username) {
+
             return res.json({
                 success:false,
                 error:"Missing username"
             });
+
         }
 
 
-        // Tìm user chính xác
+
+        // Tìm user
 
         const search = await axios.post(
             "https://users.roblox.com/v1/usernames/users",
@@ -36,6 +44,7 @@ app.get("/roblox", async (req, res) => {
         );
 
 
+
         if (!search.data.data.length) {
 
             return res.json({
@@ -46,7 +55,11 @@ app.get("/roblox", async (req, res) => {
         }
 
 
-        const id = search.data.data[0].id;
+
+        const id =
+        search.data.data[0].id;
+
+
 
 
 
@@ -60,6 +73,8 @@ app.get("/roblox", async (req, res) => {
 
 
 
+
+
         // Followers
 
         const followers = (
@@ -67,6 +82,8 @@ app.get("/roblox", async (req, res) => {
                 `https://friends.roblox.com/v1/users/${id}/followers/count`
             )
         ).data.count;
+
+
 
 
 
@@ -80,6 +97,8 @@ app.get("/roblox", async (req, res) => {
 
 
 
+
+
         // Following
 
         const following = (
@@ -90,31 +109,19 @@ app.get("/roblox", async (req, res) => {
 
 
 
+
+
         // Avatar
 
         const avatar = (
             await axios.get(
-                `https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=352x352&format=Png&isCircular=false`
+                `https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=720x720&format=Png&isCircular=false`
             )
         ).data.data[0].imageUrl;
 
 
 
-        // Username cũ
 
-        let oldNames = [];
-
-        try {
-
-            const history = await axios.get(
-                `https://users.roblox.com/v1/users/${id}/username-history`
-            );
-
-            oldNames = history.data.data.map(
-                x => x.name
-            );
-
-        } catch(e){}
 
 
 
@@ -128,9 +135,16 @@ app.get("/roblox", async (req, res) => {
                 `https://groups.roblox.com/v2/users/${id}/groups/roles`
             );
 
-            groups = groupData.data.data.length;
+
+            groups =
+            groupData.data.data.length;
+
 
         } catch(e){}
+
+
+
+
 
 
 
@@ -149,36 +163,64 @@ app.get("/roblox", async (req, res) => {
                 }
             );
 
-            badges = badgeData.data.data.length;
+
+            badges =
+            badgeData.data.data.length;
+
 
         } catch(e){}
 
 
 
+
+
+
+
         // Tuổi tài khoản
 
-        const createdDate = new Date(user.created);
+        const createdDate =
+        new Date(user.created);
 
-        const now = new Date();
 
-
-        let years = now.getFullYear() - createdDate.getFullYear();
-
-        let months = now.getMonth() - createdDate.getMonth();
-
-        let days = now.getDate() - createdDate.getDate();
+        const now =
+        new Date();
 
 
 
-        if (days < 0) {
+        let years =
+        now.getFullYear()
+        -
+        createdDate.getFullYear();
+
+
+
+        let months =
+        now.getMonth()
+        -
+        createdDate.getMonth();
+
+
+
+        let days =
+        now.getDate()
+        -
+        createdDate.getDate();
+
+
+
+
+
+        if(days < 0){
 
             months--;
 
-            const lastMonth = new Date(
+            const lastMonth =
+            new Date(
                 now.getFullYear(),
                 now.getMonth(),
                 0
             );
+
 
             days += lastMonth.getDate();
 
@@ -186,7 +228,9 @@ app.get("/roblox", async (req, res) => {
 
 
 
-        if (months < 0) {
+
+
+        if(months < 0){
 
             years--;
 
@@ -196,10 +240,12 @@ app.get("/roblox", async (req, res) => {
 
 
 
+
         let age = [];
 
 
-        if (years > 0) {
+
+        if(years > 0){
 
             age.push(
                 years + " năm"
@@ -208,7 +254,8 @@ app.get("/roblox", async (req, res) => {
         }
 
 
-        if (months > 0) {
+
+        if(months > 0){
 
             age.push(
                 months + " tháng"
@@ -217,7 +264,8 @@ app.get("/roblox", async (req, res) => {
         }
 
 
-        if (days > 0) {
+
+        if(days > 0){
 
             age.push(
                 days + " ngày"
@@ -226,7 +274,14 @@ app.get("/roblox", async (req, res) => {
         }
 
 
-        age = age.join(" ");
+
+        age =
+        age.join(" ");
+
+
+
+
+
 
 
 
@@ -234,11 +289,17 @@ app.get("/roblox", async (req, res) => {
 
             success:true,
 
+
             id:id,
 
-            username:user.name,
 
-            displayName:user.displayName,
+            username:
+            user.name,
+
+
+            displayName:
+            user.displayName,
+
 
 
             description:
@@ -246,32 +307,50 @@ app.get("/roblox", async (req, res) => {
             "Người dùng chưa thêm mô tả.",
 
 
-            verified:user.hasVerifiedBadge,
+
+            verified:
+            user.hasVerifiedBadge,
 
 
-            created:user.created,
+
+            created:
+            user.created,
 
 
-            accountAge:age,
+
+            accountAge:
+            age,
 
 
-            followers:followers,
 
-            friends:friends,
-
-            following:following,
+            followers:
+            followers,
 
 
-            avatar:avatar,
+
+            friends:
+            friends,
 
 
-            oldNames:oldNames,
+
+            following:
+            following,
 
 
-            groups:groups,
+
+            avatar:
+            avatar,
 
 
-            badges:badges,
+
+            groups:
+            groups,
+
+
+
+            badges:
+            badges,
+
 
 
             profile:
@@ -281,14 +360,20 @@ app.get("/roblox", async (req, res) => {
 
 
 
-    } catch(err){
+    } catch(err) {
+
+
+        console.log(
+            err.response?.data || err.message
+        );
 
 
         res.status(500).json({
 
             success:false,
 
-            error:err.message
+            error:
+            err.message
 
         });
 
@@ -299,7 +384,12 @@ app.get("/roblox", async (req, res) => {
 
 
 
-const PORT = process.env.PORT || 3000;
+
+
+
+const PORT =
+process.env.PORT || 3000;
+
 
 
 app.listen(PORT,()=>{
